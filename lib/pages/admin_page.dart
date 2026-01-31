@@ -188,70 +188,91 @@ class _AdminPageState extends State<AdminPage> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _pendingVendors.isEmpty
-          ? const Center(child: Text("No pending applications"))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _pendingVendors.length,
-              itemBuilder: (context, index) {
-                final vendor = _pendingVendors[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          vendor.fullName,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(vendor.email),
-                        Text(vendor.phone),
-                        const Divider(),
-                        Text(
-                          "Address: ${vendor.address}, ${vendor.city}, ${vendor.state} - ${vendor.pincode}",
-                        ),
-                        if (vendor.identificationUrl != null)
-                          TextButton.icon(
-                            onPressed: () =>
-                                _showDocument(vendor.identificationUrl),
-                            icon: const Icon(Icons.file_present),
-                            label: const Text("View ID Document"),
-                          ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton(
-                              onPressed: () => _showRejectDialog(vendor.id),
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.red,
-                              ),
-                              child: const Text("Reject"),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              onPressed: () =>
-                                  _updateStatus(vendor.id, 'verified'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                              ),
-                              child: const Text("Verify"),
-                            ),
-                          ],
-                        ),
-                      ],
+      body: RefreshIndicator(
+        onRefresh: _fetchPendingVendors,
+        color: const Color(0xff0c1c2c),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _pendingVendors.isEmpty
+            ? ListView(
+                // Using ListView to allow pull-to-refresh even when empty
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 200),
+                  Center(child: Text("No pending applications")),
+                  Center(
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        "Pull down to refresh",
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
                     ),
                   ),
-                );
-              },
-            ),
+                ],
+              )
+            : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                itemCount: _pendingVendors.length,
+                itemBuilder: (context, index) {
+                  final vendor = _pendingVendors[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            vendor.fullName,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(vendor.email),
+                          Text(vendor.phone),
+                          const Divider(),
+                          Text(
+                            "Address: ${vendor.address}, ${vendor.city}, ${vendor.state} - ${vendor.pincode}",
+                          ),
+                          if (vendor.identificationUrl != null)
+                            TextButton.icon(
+                              onPressed: () =>
+                                  _showDocument(vendor.identificationUrl),
+                              icon: const Icon(Icons.file_present),
+                              label: const Text("View ID Document"),
+                            ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton(
+                                onPressed: () => _showRejectDialog(vendor.id),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                ),
+                                child: const Text("Reject"),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: () =>
+                                    _updateStatus(vendor.id, 'verified'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                ),
+                                child: const Text("Verify"),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+      ),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
+import 'venue_list_widget.dart';
 
 class UploadsPage extends StatefulWidget {
   const UploadsPage({super.key});
@@ -34,7 +35,7 @@ class _UploadsPageState extends State<UploadsPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -235,15 +236,22 @@ class _UploadsPageState extends State<UploadsPage>
             unselectedLabelColor: Colors.white,
             indicatorColor: const Color.fromARGB(255, 212, 175, 55),
             tabs: const [
-              Tab(text: 'Carousel Items'),
-              Tab(text: 'Trending Packages'),
+              Tab(text: 'Carousel'),
+              Tab(text: 'Packages'),
+              Tab(text: 'Venues'),
+              Tab(text: 'Category'),
             ],
           ),
         ),
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: [_buildCarouselForm(), _buildTrendingPackageForm()],
+            children: [
+              _buildCarouselForm(),
+              _buildTrendingPackageForm(),
+              const VenueListWidget(),
+              _buildCategoryPlaceholder(),
+            ],
           ),
         ),
       ],
@@ -431,6 +439,37 @@ class _UploadsPageState extends State<UploadsPage>
                 : Text('Submit', style: GoogleFonts.urbanist(fontSize: 16)),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryPlaceholder() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.category_outlined, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Vendor Categories',
+              style: GoogleFonts.urbanist(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Coming soon...',
+              style: GoogleFonts.urbanist(
+                fontSize: 16,
+                color: Colors.grey[500],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
