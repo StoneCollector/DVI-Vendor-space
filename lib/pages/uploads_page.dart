@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
 import 'venue_list_widget.dart';
+import 'category_list_widget.dart';
 
 class UploadsPage extends StatefulWidget {
   const UploadsPage({super.key});
@@ -250,7 +251,7 @@ class _UploadsPageState extends State<UploadsPage>
               _buildCarouselForm(),
               _buildTrendingPackageForm(),
               const VenueListWidget(),
-              _buildCategoryPlaceholder(),
+              const CategoryListWidget(),
             ],
           ),
         ),
@@ -439,37 +440,6 @@ class _UploadsPageState extends State<UploadsPage>
                 : Text('Submit', style: GoogleFonts.urbanist(fontSize: 16)),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryPlaceholder() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.category_outlined, size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'Vendor Categories',
-              style: GoogleFonts.urbanist(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Coming soon...',
-              style: GoogleFonts.urbanist(
-                fontSize: 16,
-                color: Colors.grey[500],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
