@@ -4,6 +4,8 @@ class VenueData {
   final String vendorId;
   final String name;
   final String? description;
+  final String?
+  category; // Venue category: Wedding, Corporate, Party Hall, etc.
   final double? latitude;
   final double? longitude;
   final String? locationAddress;
@@ -24,6 +26,7 @@ class VenueData {
     required this.vendorId,
     required this.name,
     this.description,
+    this.category,
     this.latitude,
     this.longitude,
     this.locationAddress,
@@ -44,6 +47,7 @@ class VenueData {
       vendorId: json['vendor_id'],
       name: json['name'] ?? '',
       description: json['description'],
+      category: json['category'],
       latitude: json['latitude']?.toDouble(),
       longitude: json['longitude']?.toDouble(),
       locationAddress: json['location_address'],
@@ -67,6 +71,7 @@ class VenueData {
       'vendor_id': vendorId,
       'name': name,
       'description': description,
+      'category': category,
       'latitude': latitude,
       'longitude': longitude,
       'location_address': locationAddress,
@@ -96,6 +101,7 @@ class VenueData {
     String? vendorId,
     String? name,
     String? description,
+    String? category,
     double? latitude,
     double? longitude,
     String? locationAddress,
@@ -112,6 +118,7 @@ class VenueData {
       vendorId: vendorId ?? this.vendorId,
       name: name ?? this.name,
       description: description ?? this.description,
+      category: category ?? this.category,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       locationAddress: locationAddress ?? this.locationAddress,

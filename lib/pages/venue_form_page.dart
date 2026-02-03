@@ -28,6 +28,21 @@ class _VenueFormPageState extends State<VenueFormPage> {
   final _venueDiscountController = TextEditingController();
   final _policiesController = TextEditingController();
 
+  // Category
+  String? _selectedCategory;
+
+  // Predefined venue categories
+  static const List<String> _venueCategories = [
+    'Wedding Venue',
+    'Corporate Event Space',
+    'Party Hall',
+    'Celebration Venue',
+    'Outdoor Venue',
+    'Banquet Hall',
+    'Conference Center',
+    'Other',
+  ];
+
   // Location data
   double? _latitude;
   double? _longitude;
@@ -57,6 +72,7 @@ class _VenueFormPageState extends State<VenueFormPage> {
     final venue = widget.existingVenue!;
     _nameController.text = venue.name;
     _descriptionController.text = venue.description ?? '';
+    _selectedCategory = venue.category;
     _basePriceController.text = venue.basePrice.toString();
     _venueDiscountController.text = venue.venueDiscountPercent.toString();
     _policiesController.text = venue.policies ?? '';
@@ -132,21 +148,24 @@ class _VenueFormPageState extends State<VenueFormPage> {
   Future<void> _addGalleryImage() async {
     try {
       // image_picker handles permissions internally on modern Android
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
+      // Allow multiple image selection
+      final List<XFile> images = await _picker.pickMultiImage(
         imageQuality: 85, // Compress for faster uploads
       );
 
-      if (image != null && mounted) {
+      if (images.isNotEmpty && mounted) {
         setState(() {
-          _galleryImages.add(GalleryEntry(localFile: File(image.path)));
+          // Add all selected images to the gallery
+          for (var image in images) {
+            _galleryImages.add(GalleryEntry(localFile: File(image.path)));
+          }
         });
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error picking images: $e')));
       }
     }
   }
@@ -224,6 +243,7 @@ class _VenueFormPageState extends State<VenueFormPage> {
         vendorId: '', // Will be set by service
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
+        category: _selectedCategory,
         latitude: _latitude,
         longitude: _longitude,
         locationAddress: _locationAddress,
@@ -324,6 +344,8 @@ class _VenueFormPageState extends State<VenueFormPage> {
                 children: [
                   _buildBasicInfoSection(),
                   const SizedBox(height: 24),
+                  _buildCategorySection(),
+                  const SizedBox(height: 24),
                   _buildLocationSection(),
                   const SizedBox(height: 24),
                   _buildGallerySection(),
@@ -376,6 +398,32 @@ class _VenueFormPageState extends State<VenueFormPage> {
             alignLabelWithHint: true,
           ),
           maxLines: 4,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategorySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Venue Category'),
+        DropdownButtonFormField<String>(
+          value: _selectedCategory,
+          decoration: const InputDecoration(
+            labelText: 'Select Category *',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.category),
+          ),
+          items: _venueCategories.map((category) {
+            return DropdownMenuItem(value: category, child: Text(category));
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedCategory = value;
+            });
+          },
+          validator: (v) => v == null ? 'Please select a category' : null,
         ),
       ],
     );
