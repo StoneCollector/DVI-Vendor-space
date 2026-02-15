@@ -28,6 +28,7 @@ class _CompleteVendorProfilePageState extends State<CompleteVendorProfilePage> {
 
   String _selectedCountryCode = '91';
   File? _idDocument;
+  String _userRole = 'venue_distributor'; // Default role
 
   @override
   void initState() {
@@ -45,6 +46,12 @@ class _CompleteVendorProfilePageState extends State<CompleteVendorProfilePage> {
       final metaName = user.userMetadata?['full_name'];
       if (metaName != null) {
         _nameController.text = metaName.toString();
+      }
+
+      // Get role from signup metadata
+      final metaRole = user.userMetadata?['role'];
+      if (metaRole != null) {
+        _userRole = metaRole.toString();
       }
     }
   }
@@ -99,6 +106,7 @@ class _CompleteVendorProfilePageState extends State<CompleteVendorProfilePage> {
         'city': _cityController.text,
         'state': _stateController.text,
         'pincode': _pincodeController.text,
+        'role': _userRole, // Save role from signup
         'verification_status': 'pending',
       };
 
@@ -106,7 +114,7 @@ class _CompleteVendorProfilePageState extends State<CompleteVendorProfilePage> {
         data['identification_url'] = docPath;
       }
 
-      await Supabase.instance.client.from('vendors').upsert(data);
+      await Supabase.instance.client.from('vendors').insert(data);
 
       // Explicitly verify the row exists now
       final check = await Supabase.instance.client

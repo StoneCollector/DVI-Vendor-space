@@ -21,6 +21,14 @@ class _SignupPageState extends State<SignupPage> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
+  String _selectedRole = 'venue_distributor'; // Default role
+
+  // Pre-calculated colors to avoid rebuilding on every keystroke
+  static const _fieldBgColor = Color(0x0DFFFFFF); // white with 0.05 opacity
+  static const _fieldBorderColor = Color(0x1AFFFFFF); // white with 0.1 opacity
+  static const _amberColor = Color(0xFFFFC107);
+  static const _amberIconColor = Color(0xB3FFC107); // amber with 0.7 opacity
+  static const _amberGlowColor = Color(0x26FFC107); // amber with 0.15 opacity
 
   @override
   void dispose() {
@@ -42,17 +50,11 @@ class _SignupPageState extends State<SignupPage> {
         password: _passwordController.text,
         data: {
           'full_name': _nameController.text.trim(),
-        }, // Store name in metadata initially
+          'role': _selectedRole, // Store selected role
+        },
       );
 
       if (response.user == null) throw "Signup failed";
-
-      // If email confirmation is off, we have a session.
-      // If on, we might not. But the prompt says: "create supabase user -> then proceed with the additional details"
-      // If we don't have a session, we can't proceed to insert details yet.
-      // However, the user asked to "proceed with the additional details".
-      // If session is null, we strictly show the "Verify Email" dialog.
-      // If session is active, we go to CompleteProfilePage.
 
       if (response.session == null) {
         if (mounted) {
@@ -82,12 +84,12 @@ class _SignupPageState extends State<SignupPage> {
         return;
       }
 
-      // If we have a session, we proceed to the Next Step (Details)
+      // If we have a session, proceed to profile completion
       if (mounted) {
         Navigator.pushReplacementNamed(
           context,
           '/',
-        ); // Main wrapper will route to CompleteProfilePage because profile is null
+        ); // Main wrapper will route to CompleteProfilePage
       }
     } catch (e) {
       if (mounted) {
@@ -117,20 +119,17 @@ class _SignupPageState extends State<SignupPage> {
         ),
         child: Stack(
           children: [
-            // Background Elements
+            // Background Elements - const to avoid rebuilding
             Positioned(
               top: -size.height * 0.15,
               right: -size.width * 0.2,
               child: Container(
                 width: size.width * 0.7,
                 height: size.width * 0.7,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    colors: [
-                      Colors.amber.withOpacity(0.15),
-                      Colors.transparent,
-                    ],
+                    colors: [_amberGlowColor, Colors.transparent],
                   ),
                 ),
               ),
@@ -145,12 +144,12 @@ class _SignupPageState extends State<SignupPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
+                        const Text(
                           "Create Account",
                           style: TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.w800,
-                            color: Colors.amber[400],
+                            color: _amberColor,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -189,8 +188,7 @@ class _SignupPageState extends State<SignupPage> {
                           onVisibilityChanged: () => setState(
                             () => _isPasswordVisible = !_isPasswordVisible,
                           ),
-                          validator: Validators
-                              .validatePassword, // Use existing strong validator
+                          validator: Validators.validatePassword,
                         ),
                         const SizedBox(height: 16),
                         _buildPasswordField(
@@ -205,12 +203,14 @@ class _SignupPageState extends State<SignupPage> {
                               ? "Passwords do not match"
                               : null,
                         ),
+                        const SizedBox(height: 24),
+                        _buildRoleSelector(),
 
                         const SizedBox(height: 32),
                         ElevatedButton(
                           onPressed: _isLoading ? null : _submit,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.amber,
+                            backgroundColor: _amberColor,
                             foregroundColor: Colors.black,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
@@ -230,9 +230,9 @@ class _SignupPageState extends State<SignupPage> {
                         const SizedBox(height: 24),
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: Text(
+                          child: const Text(
                             "Already have an account? Login",
-                            style: TextStyle(color: Colors.amber[400]),
+                            style: TextStyle(color: _amberColor),
                           ),
                         ),
                       ],
@@ -240,6 +240,136 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoleSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Account Type",
+          style: TextStyle(
+            color: Colors.grey[300],
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildRoleOption(
+          value: 'venue_distributor',
+          title: 'Venue Distributor',
+          description: 'Manage wedding venues',
+          icon: Icons.business,
+        ),
+        const SizedBox(height: 8),
+        _buildRoleOption(
+          value: 'vendor_distributor',
+          title: 'Vendor Services',
+          description: 'Manage vendor services (catering, photography, etc.)',
+          icon: Icons.store,
+        ),
+        const SizedBox(height: 8),
+        _buildRoleOption(
+          value: 'venue_vendor_distributor',
+          title: 'Both (Venue & Services)',
+          description: 'Combined access to venues and services',
+          icon: Icons.business_center,
+        ),
+        const SizedBox(height: 8),
+        _buildRoleOption(
+          value: 'admin',
+          title: 'Admin Account',
+          description: 'Full system access (requires admin approval)',
+          icon: Icons.admin_panel_settings,
+          isSpecial: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRoleOption({
+    required String value,
+    required String title,
+    required String description,
+    required IconData icon,
+    bool isSpecial = false,
+  }) {
+    final isSelected = _selectedRole == value;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedRole = value),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isSelected ? _fieldBgColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? _amberColor : _fieldBorderColor,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? _amberColor : Colors.grey[500],
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: isSelected ? _amberColor : Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                      if (isSpecial) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'APPROVAL REQUIRED',
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            Radio<String>(
+              value: value,
+              groupValue: _selectedRole,
+              onChanged: (v) => setState(() => _selectedRole = v!),
+              activeColor: _amberColor,
             ),
           ],
         ),
@@ -267,10 +397,10 @@ class _SignupPageState extends State<SignupPage> {
         ),
         const SizedBox(height: 8),
         Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          decoration: const BoxDecoration(
+            color: _fieldBgColor,
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+            border: Border.fromBorderSide(BorderSide(color: _fieldBorderColor)),
           ),
           child: TextFormField(
             controller: controller,
@@ -281,10 +411,7 @@ class _SignupPageState extends State<SignupPage> {
               hintText: hint,
               hintStyle: TextStyle(color: Colors.grey[500]),
               border: InputBorder.none,
-              prefixIcon: Icon(
-                prefixIcon,
-                color: Colors.amber.withOpacity(0.7),
-              ),
+              prefixIcon: Icon(prefixIcon, color: _amberIconColor),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 16,
@@ -315,10 +442,10 @@ class _SignupPageState extends State<SignupPage> {
         ),
         const SizedBox(height: 8),
         Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          decoration: const BoxDecoration(
+            color: _fieldBgColor,
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+            border: Border.fromBorderSide(BorderSide(color: _fieldBorderColor)),
           ),
           child: TextFormField(
             controller: controller,
@@ -329,9 +456,9 @@ class _SignupPageState extends State<SignupPage> {
               hintText: "••••••••",
               hintStyle: TextStyle(color: Colors.grey[500]),
               border: InputBorder.none,
-              prefixIcon: Icon(
+              prefixIcon: const Icon(
                 Icons.lock_outline,
-                color: Colors.amber.withOpacity(0.7),
+                color: _amberIconColor,
               ),
               suffixIcon: IconButton(
                 icon: Icon(

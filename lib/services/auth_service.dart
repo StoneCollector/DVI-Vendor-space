@@ -95,4 +95,21 @@ class AuthService {
       return null;
     }
   }
+
+  /// Check if current user is admin
+  Future<bool> isAdmin() async {
+    final profile = await getVendorProfile();
+    return profile?.isAdmin ?? false;
+  }
+
+  /// Get current user's role
+  Future<String?> getUserRole() async {
+    final profile = await getVendorProfile();
+    return profile?.role;
+  }
+
+  /// Get current user ID
+  String? getCurrentUserId() {
+    return _supabase.auth.currentUser?.id;
+  }
 }
