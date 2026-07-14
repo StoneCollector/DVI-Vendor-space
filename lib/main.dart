@@ -9,21 +9,19 @@ import 'utils/constants.dart';
 import 'auth/login_page.dart';
 import 'auth/signup_page.dart';
 import 'pages/dashboard_page.dart';
+import 'services/notification_service.dart';
 import 'pages/verification_status_page.dart';
 import 'pages/admin_page.dart';
 import 'services/auth_service.dart';
 import 'auth/complete_profile_page.dart';
 import 'auth/admin_setup_page.dart';
 import 'auth/business_details_page.dart';
-import 'services/notification_service.dart';
 import 'firebase_options.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }
-
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,7 +44,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'DreamVentz Vendor',
-      navigatorKey: navigatorKey,
+      navigatorKey: vendorNavigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff0c1c2c)),
@@ -62,7 +60,7 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const AuthWrapper(), 
+        '/': (context) => const AuthWrapper(),
         AppConstants.loginRoute: (context) => const LoginPage(),
         AppConstants.signupRoute: (context) => const SignupPage(),
         AppConstants.dashboardRoute: (context) => const DashboardPage(),
@@ -106,7 +104,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
-          table: 'orderslist', 
+          table: 'orderslist',
           callback: (payload) {
             final newBooking = payload.newRecord;
             debugPrint('📦 New order received: $newBooking');
@@ -117,8 +115,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
         )
         .subscribe();
   }
+
   void _showNewBookingBanner(Map<String, dynamic> data) {
-    final scaffoldContext = navigatorKey.currentContext;
+    final scaffoldContext = vendorNavigatorKey.currentContext;
     if (scaffoldContext == null) return;
 
     ScaffoldMessenger.of(scaffoldContext).showSnackBar(

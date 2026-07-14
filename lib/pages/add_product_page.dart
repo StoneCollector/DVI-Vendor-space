@@ -85,44 +85,31 @@ class _AddProductPageState extends State<AddProductPage> {
   }
 
   // Add this method to _AddProductPageState
-  Future<void> _notifyAllClients(String category) async {
+  Future<void> _notifyAllClients(String category, String productId) async {
     try {
       final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? '';
       final anonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
       final vendorId = _supabase.auth.currentUser?.id ?? '';
 
-      if (supabaseUrl.isEmpty || anonKey.isEmpty || vendorId.isEmpty) {
-        debugPrint('⚠️ Missing credentials or vendor ID');
+      if (supabaseUrl.isEmpty || anonKey.isEmpty || vendorId.isEmpty) return;
+
+      // ✅ Fetch category_id directly from vendor_cards — no string mapping needed
+      final cardRes = await _supabase
+          .from('vendor_cards')
+          .select('category_id, studio_name')
+          .eq('product_id', productId)
+          .maybeSingle();
+
+      if (cardRes == null) {
+        debugPrint('⚠️ vendor_cards row not found for product $productId');
         return;
       }
 
-      final categoryIdMap = {
-        'Photography': 1,
-        'Mehndi Artist': 2,
-        'Make-Up Artist': 3,
-        'Caterers': 4,
-        'DJ & Bands': 5,
-        'Decorators': 6,
-        'Pandits': 7,
-        'Invites & Gifts 🎁': 8,
-      };
-
-      final categoryId = categoryIdMap[category] ?? 1;
-
-      // Get vendor's studio name from vendor_cards
-      final vendorCardRes = await _supabase
-          .from('vendor_cards')
-          .select('studio_name')
-          .eq('vendor_id', vendorId)
-          .limit(1)
-          .maybeSingle();
-
+      final categoryId = cardRes['category_id'] as int;
       final studioName =
-          vendorCardRes?['studio_name'] as String? ?? 'Your favourite vendor';
+          cardRes['studio_name'] as String? ?? 'Your favourite vendor';
 
-      debugPrint(
-        '🔔 Notifying clients — Studio: $studioName, Category: $category',
-      );
+      debugPrint('🔔 Notifying — Studio: $studioName, CategoryId: $categoryId');
 
       final response = await http.post(
         Uri.parse('$supabaseUrl/functions/v1/notify-all-clients'),
@@ -138,9 +125,7 @@ class _AddProductPageState extends State<AddProductPage> {
         }),
       );
 
-      debugPrint(
-        '📡 Notification response: ${response.statusCode} ${response.body}',
-      );
+      debugPrint('📡 Notify response: ${response.statusCode} ${response.body}');
     } catch (e) {
       debugPrint('⚠️ Failed to notify clients: $e');
     }
@@ -214,6 +199,8 @@ class _AddProductPageState extends State<AddProductPage> {
 
     try {
       final userId = _supabase.auth.currentUser!.id;
+      final isEditing = widget.existingProduct != null;
+
       final productData = {
         'vendor_id': userId,
         'name': _nameController.text.trim(),
@@ -227,7 +214,7 @@ class _AddProductPageState extends State<AddProductPage> {
       };
 
       String productId;
-      if (widget.existingProduct != null) {
+      if (isEditing) {
         productId = widget.existingProduct!['id'].toString();
         await _supabase
             .from('products')
@@ -242,55 +229,60 @@ class _AddProductPageState extends State<AddProductPage> {
         productId = res['id'].toString();
       }
 
+      // ── Handle images ──────────────────────────────────────────────────────
+      List<String> newUrls = [];
       if (_selectedImageBytes.isNotEmpty) {
-        final newUrls = await _uploadImages(productId);
-        final allUrls = [..._existingImageUrls, ...newUrls];
-        final imageUrlJson = jsonEncode(allUrls);
+        newUrls = await _uploadImages(productId);
+      }
+
+      final allUrls = [..._existingImageUrls, ...newUrls];
+      if (allUrls.isNotEmpty) {
         await _supabase
             .from('products')
-            .update({'image_url': imageUrlJson})
-            .eq('id', productId);
-        debugPrint('✅ Images saved: $imageUrlJson');
-
-        final categoryIdMap = {
-          'Photography': 1,
-          'Mehndi Artist': 2,
-          'Make-Up Artist': 3,
-          'Caterers': 4,
-          'DJ & Bands': 5,
-          'Decorators': 6,
-          'Pandits': 7,
-          'Invites & Gifts 🎁': 8,
-        };
-
-        final categoryId = categoryIdMap[_selectedCategory];
-        if (categoryId != null) {
-          await _supabase.from('vendor_cards').upsert({
-            'vendor_id': userId,
-            'product_id': productId,
-            'category_id': categoryId,
-            'studio_name': _nameController.text.trim(),
-            'original_price': double.tryParse(_priceController.text) ?? 0.0,
-            'discounted_price':
-                double.tryParse(_discountController.text) ?? 0.0,
-            'image_path': newUrls.isNotEmpty ? newUrls.first : '',
-            'service_tags': [],
-            'quality_tags': [],
-            'city': _cityController.text.trim(),
-          }, onConflict: 'product_id');
-          debugPrint('✅ vendor_cards synced');
-        }
-      } else if (_existingImageUrls.isNotEmpty) {
-        final imageUrlJson = jsonEncode(_existingImageUrls);
-        await _supabase
-            .from('products')
-            .update({'image_url': imageUrlJson})
+            .update({'image_url': jsonEncode(allUrls)})
             .eq('id', productId);
       }
 
-      // ✅ Notify all clients BEFORE pop
-      // Notify clients about new service
-      await _notifyAllClients(_selectedCategory ?? 'Event Services');
+      // ── Sync vendor_cards — always, not just when images are picked ────────
+      final categoryIdMap = {
+        'Photography': 1,
+        'Mehndi Artist': 2,
+        'Make-Up Artist': 3,
+        'Caterers': 4,
+        'DJ & Bands': 5,
+        'Decoraters': 6,
+        'Pandits 🕉️': 7,
+        'Pandits': 7,
+        'Invites & Gifts 🎁': 8,
+        'Invites & Gifts': 8,
+      };
+
+      // ✅ Direct lookup — no regex, no strip
+      final categoryId = categoryIdMap[_selectedCategory ?? ''];
+
+      if (categoryId != null) {
+        final imagePath = allUrls.isNotEmpty ? allUrls.first : '';
+        await _supabase.from('vendor_cards').upsert({
+          'vendor_id': userId,
+          'product_id': productId,
+          'category_id': categoryId,
+          'studio_name': _nameController.text.trim(),
+          'original_price': double.tryParse(_priceController.text) ?? 0.0,
+          'discounted_price': double.tryParse(_discountController.text) ?? 0.0,
+          'image_path': imagePath,
+          'service_tags': [],
+          'quality_tags': [],
+          'city': _cityController.text.trim(),
+        }, onConflict: 'product_id');
+        debugPrint(
+          '✅ vendor_cards synced — category: $_selectedCategory ($categoryId)',
+        );
+      }
+
+      // ── Notify clients only on NEW product, not edits ─────────────────────
+      if (!isEditing) {
+        await _notifyAllClients(_selectedCategory ?? '', productId);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
